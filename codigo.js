@@ -7,6 +7,7 @@ let p1, p2;
 let plataformas = [];
 let perigos = [];
 let plataformasMoveis = [];
+let inimigos = [];
 let objetivo;
 let vitoriasP1 = 0;
 let vitoriasP2 = 0;
@@ -17,7 +18,7 @@ function setup() {
 }
 
 function draw() {
-  background(30, 30, 50); // "céu"
+  background(20, 20, 40);
 
   if (cena === 0) {
     telaMenu();
@@ -25,6 +26,8 @@ function draw() {
     executarJogo();
   } else if (cena === 2) {
     telaGameOver();
+  } else if (cena === 3) {
+    telaVitoriaFinal();
   }
 }
 
@@ -33,43 +36,47 @@ function carregarNivel(n) {
   plataformas = [];
   perigos = [];
   plataformasMoveis = [];
+  inimigos = [];
 
   // NÍVEL 1: O Aquecimento
   if (n === 1) {
-    plataformas.push({x: 0, y: 550, w: 300, h: 50}, {x: 500, y: 550, w: 300, h: 50});
-    perigos.push({x: 300, y: 580, w: 200, h: 20}); // Poça no meio
-    plataformas.push({x: 350, y: 400, w: 100, h: 20});
+    plataformas.push({x: 0, y: 550, w: 250, h: 50}, {x: 550, y: 550, w: 250, h: 50});
+    plataformas.push({x: 300, y: 450, w: 200, h: 20}, {x: 100, y: 350, w: 100, h: 20});
+    perigos.push({x: 250, y: 580, w: 300, h: 20}); 
     objetivo = {x: 720, y: 500, w: 40, h: 50};
   } 
   // NÍVEL 2: Saltos de Precisão
   else if (n === 2) {
-    plataformas.push({x: 0, y: 550, w: 100, h: 50});
-    plataformas.push({x: 200, y: 450, w: 80, h: 20}, {x: 400, y: 350, w: 80, h: 20}, {x: 600, y: 250, w: 80, h: 20});
-    perigos.push({x: 0, y: 590, w: width, h: 10}); // Chão de espinhos
-    objetivo = {x: 620, y: 200, w: 40, h: 50};
+    plataformas.push({x: 0, y: 550, w: 100, h: 50}, {x: 150, y: 450, w: 100, h: 20});
+    plataformas.push({x: 300, y: 350, w: 200, h: 20}, {x: 550, y: 250, w: 100, h: 20});
+    perigos.push({x: 0, y: 590, w: width, h: 10}); 
+    inimigos.push(new Inimigo(400, 320, 120, 2)); 
+    objetivo = {x: 580, y: 200, w: 40, h: 50};
   }
   // NÍVEL 3: O Elevador
   else if (n === 3) {
     plataformas.push({x: 0, y: 550, w: 150, h: 50});
     // Plataforma móvel para alcançar o topo
-    plataformasMoveis.push({x: 200, y: 500, w: 100, h: 20, range: 200, vel: 2, inicialX: 200});
-    plataformas.push({x: 450, y: 350, w: 200, h: 20}); 
+    plataformasMoveis.push({x: 200, y: 480, w: 100, h: 20, range: 150, vel: 2, inicialX: 200});
+    plataformas.push({x: 400, y: 380, w: 150, h: 20}, {x: 600, y: 280, w: 150, h: 20}); 
     perigos.push({x: 150, y: 580, w: 650, h: 20});
-    objetivo = {x: 550, y: 300, w: 40, h: 50};
+    objetivo = {x: 650, y: 230, w: 40, h: 50};
   }
   // NÍVEL 4: Labirinto de Perigo
   else if (n === 4) {
-    plataformas.push({x: 0, y: 200, w: 100, h: 20}, {x: 200, y: 300, w: 100, h: 20}, {x: 400, y: 400, w: 100, h: 20});
-    plataformas.push({x: 600, y: 300, w: 100, h: 20}, {x: 700, y: 150, w: 100, h: 20});
-    perigos.push({x: 0, y: 580, w: width, h: 20}, {x: 300, y: 0, w: 50, h: 350}); // Obstáculo vertical
-    objetivo = {x: 730, y: 100, w: 40, h: 50};
+    plataformas.push({x: 0, y: 550, w: 800, h: 50});
+    inimigos.push(new Inimigo(450, 520, 300, 2.5)); 
+    perigos.push({x: 200, y: 320, w: 400, h: 20}); 
+    plataformas.push({x: 200, y: 340, w: 400, h: 10});
+    objetivo = {x: 730, y: 500, w: 40, h: 50};
   }
   // NÍVEL 5: A Cabana do Mistério (Final)
   else {
-    plataformas.push({x: 0, y: 550, w: 800, h: 50});
-    plataformasMoveis.push({x: 100, y: 400, w: 150, h: 20, range: 400, vel: 4, inicialX: 100});
-    perigos.push({x: 200, y: 530, w: 400, h: 20});
-    objetivo = {x: 400, y: 480, w: 80, h: 70}; // Tio Stan espera aqui
+    plataformas.push({x: 0, y: 550, w: 200, h: 50}, {x: 600, y: 550, w: 200, h: 50});
+    plataformasMoveis.push({x: 250, y: 400, w: 300, h: 20, range: 300, vel: 1.5, inicialX: 250});
+    inimigos.push(new Inimigo(385, 370, 300, 1.5)); 
+    perigos.push({x: 200, y: 580, w: 400, h: 20});
+    objetivo = {x: 400, y: 500, w: 80, h: 70}; 
   }
 
   p1 = new Jogador(30, 450, 87, 65, 68, color(255, 100, 150)); 
@@ -77,6 +84,13 @@ function carregarNivel(n) {
 }
 
 function executarJogo() {
+  // fesenhar e atualizar inimigos (bill)
+  for (let ini of inimigos) {
+    ini.atualizar();
+    ini.desenhar();
+    if (p1.colide(ini) || p2.colide(ini)) cena = 2;
+  }
+
   // desenhar plataformas e móveis
   fill(150, 150, 150);
   for (let pm of plataformasMoveis) {
@@ -110,7 +124,24 @@ function proxNivel() {
     nivelAtual++;
     carregarNivel(nivelAtual);
   } else {
-    cena = 2;
+    cena = 3; // vitória
+  }
+}
+
+class Inimigo {
+  constructor(x, y, range, vel) {
+    this.x = x; this.y = y;
+    this.w = 30; this.h = 30;
+    this.inicialX = x;
+    this.range = range;
+    this.vel = vel;
+  }
+  atualizar() {
+    this.x = this.inicialX + sin(frameCount * 0.05 * this.vel) * this.range/2;
+  }
+  desenhar() {
+    fill(255, 0, 0);
+    triangle(this.x, this.y + this.h, this.x + this.w/2, this.y, this.x + this.w, this.y + this.h);
   }
 }
 
@@ -196,6 +227,26 @@ function telaGameOver() {
   textSize(20);
   text(`Placar Final: Mabel ${vitoriasP1} x ${vitoriasP2} Dipper`, width/2, height/2 + 20);
   text("Pressione 'R' para tentar novamente", width/2, height/2 + 60);
+}
+
+function telaVitoriaFinal() {
+  background(0, 50, 0);
+  textAlign(CENTER);
+  fill(255, 215, 0);
+  textSize(40);
+  text("VOCÊS CHEGARAM AO FINAL!", width/2, height/2 - 60);
+  textSize(30);
+  fill(255);
+  text("PARABÉNS!", width/2, height/2 - 10);
+  
+  textSize(24);
+  text("PONTUAÇÃO FINAL:", width/2, height/2 + 60);
+  text(`Mabel: ${vitoriasP1} vitórias`, width/2, height/2 + 90);
+  text(`Dipper: ${vitoriasP2} vitórias`, width/2, height/2 + 120);
+  
+  textSize(18);
+  fill(200);
+  text("Pressione 'R' para recomeçar a jornada", width/2, height/2 + 180);
 }
 
 function keyPressed() {
