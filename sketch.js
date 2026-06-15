@@ -20,10 +20,13 @@ let inimigos = [];
 let itens = [];
 let portaP1, portaP2; // Portas individuais
 
-// imagens originais mantidas
-let imgDipper, imgMabel;
+// sprites dos jogadores
+let spritesDipper = [];
+let spritesMabel = [];
 let imgMenu, imgGameOver, imgYouWin;
-let imgPlataforma;
+const ALTURA_JOGADOR = 52;
+const TAMANHO_MOEDA = 20;
+const OSCILACAO_MOEDA = 4;
 
 // música e fonte
 let musicaFundo;
@@ -33,15 +36,82 @@ function preload() {
   try {
     musicaFundo = loadSound('musica.mp3');
     fontePixel = loadFont('pixel.ttf');
-    imgDipper = loadImage('dipper.png');
-    imgMabel = loadImage('mabel.png');
-    imgMenu = loadImage('menu.png');
-    imgGameOver = loadImage('gameover.png');
-    imgYouWin = loadImage('youwin.png');
-    imgPlataforma = loadImage('plataforma.png');
+    spritesDipper = carregarSpritesJogador('dipper', 'dipper.png');
+    spritesMabel = carregarSpritesJogador('mabel', 'mabel.png');
+    carregarImagem('menu.png', (img) => imgMenu = img);
+    carregarImagem('gameover.png', (img) => imgGameOver = img);
+    carregarImagem('youwin.png', (img) => imgYouWin = img);
   } catch (e) {
     console.log("Arquivos de mídia não encontrados. Usando fallbacks.");
   }
+}
+
+function carregarImagem(arquivo, aoCarregar) {
+  loadImage(`assets/${arquivo}`, aoCarregar, () => {
+    loadImage(arquivo, aoCarregar, () => {});
+  });
+}
+
+function carregarImagemOpcional(arquivo, aoCarregar) {
+  loadImage(`assets/${arquivo}`, aoCarregar, () => {
+    loadImage(arquivo, aoCarregar, () => {});
+  });
+}
+
+function carregarSpritesJogador(nome, fallbackArquivo) {
+  let sprites = {
+    fallback: null,
+    frames: [null, null, null]
+  };
+
+  carregarImagem(fallbackArquivo, (img) => sprites.fallback = criarFrameSprite(img));
+
+  for (let i = 0; i < 3; i++) {
+    let numero = i + 1;
+    carregarImagemOpcional(`${nome}${numero}.png`, (img) => sprites.frames[i] = criarFrameSprite(img));
+  }
+
+  return sprites;
+}
+
+function criarFrameSprite(img) {
+  return {
+    img,
+    corte: calcularCorteSprite(img)
+  };
+}
+
+function calcularCorteSprite(img) {
+  img.loadPixels();
+
+  let minX = img.width;
+  let minY = img.height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      let alpha = img.pixels[(y * img.width + x) * 4 + 3];
+
+      if (alpha > 10) {
+        minX = min(minX, x);
+        minY = min(minY, y);
+        maxX = max(maxX, x);
+        maxY = max(maxY, y);
+      }
+    }
+  }
+
+  if (maxX < 0 || maxY < 0) {
+    return {x: 0, y: 0, w: img.width, h: img.height};
+  }
+
+  return {
+    x: minX,
+    y: minY,
+    w: maxX - minX + 1,
+    h: maxY - minY + 1
+  };
 }
 
 function setup() {
@@ -50,13 +120,86 @@ function setup() {
 }
 
 function draw() {
-  background(20, 20, 40);
+  if (cena === 1) desenharPaisagemEscura();
+  else background(20, 20, 40);
 
   if (cena === 0) telaMenu();
   else if (cena === 1) executarJogo();
   else if (cena === 2) telaGameOver();
   else if (cena === 3) telaVitoriaFinal();
   else if (cena === 4) telaSobre();
+}
+
+// ==========================================
+// FUNDO DO JOGO
+// ==========================================
+function desenharPaisagemEscura() {
+  push();
+  noStroke();
+
+  for (let y = 0; y < height; y++) {
+    let t = y / height;
+    let topo = color(5, 7, 18);
+    let base = color(22, 18, 38);
+    stroke(lerpColor(topo, base, t));
+    line(0, y, width, y);
+  }
+
+  noStroke();
+  fill(225, 220, 180, 210);
+  ellipse(690, 90, 56, 56);
+  fill(8, 9, 24, 225);
+  ellipse(708, 78, 46, 46);
+
+  fill(255, 242, 180, 160);
+  for (let i = 0; i < 34; i++) {
+    let x = (i * 73 + 31) % width;
+    let y = 45 + ((i * 47) % 210);
+    let brilho = 1 + (i % 3);
+    ellipse(x, y, brilho, brilho);
+  }
+
+  fill(16, 20, 38);
+  beginShape();
+  vertex(0, 370);
+  vertex(90, 265);
+  vertex(175, 350);
+  vertex(270, 235);
+  vertex(390, 365);
+  vertex(520, 245);
+  vertex(650, 360);
+  vertex(800, 260);
+  vertex(800, 600);
+  vertex(0, 600);
+  endShape(CLOSE);
+
+  fill(10, 14, 28);
+  beginShape();
+  vertex(0, 430);
+  vertex(110, 335);
+  vertex(230, 425);
+  vertex(350, 315);
+  vertex(500, 430);
+  vertex(650, 325);
+  vertex(800, 420);
+  vertex(800, 600);
+  vertex(0, 600);
+  endShape(CLOSE);
+
+  fill(4, 8, 16);
+  rect(0, 470, width, 130);
+  for (let x = -20; x < width + 40; x += 38) {
+    let h = 70 + ((x * 13) % 45);
+    triangle(x, 470, x + 20, 470 - h, x + 40, 470);
+    rect(x + 16, 462, 8, 78);
+  }
+
+  fill(120, 135, 165, 22);
+  ellipse(185, 430 + sin(frameCount * 0.01) * 3, 260, 34);
+  ellipse(520, 390 + sin(frameCount * 0.012) * 3, 310, 38);
+  ellipse(700, 465 + sin(frameCount * 0.009) * 3, 230, 30);
+
+  pop();
 }
 
 // ==========================================
@@ -79,43 +222,43 @@ function carregarNivel(n) {
     spawnP2 = {x: 30, y: 400};
     
     plataformas.push({x: 0, y: 550, w: 300, h: 50}, {x: 400, y: 550, w: 400, h: 50}); 
-    plataformas.push({x: 0, y: 450, w: 200, h: 20}, {x: 250, y: 400, w: 550, h: 20}); 
-    plataformas.push({x: 0, y: 300, w: 600, h: 20}); 
+    plataformas.push({x: 0, y: 450, w: 200, h: 20}, {x: 250, y: 360, w: 550, h: 20}); 
+    plataformas.push({x: 0, y: 230, w: 350, h: 20}, {x: 470, y: 260, w: 130, h: 20}); 
     plataformas.push({x: 650, y: 230, w: 150, h: 20}); 
     
     perigos.push({x: 300, y: 580, w: 100, h: 20}); 
-    perigos.push({x: 400, y: 380, w: 20, h: 20}); 
-    perigos.push({x: 150, y: 530, w: 20, h: 20});
+    perigos.push({x: 400, y: 340, w: 20, h: 20}); 
+    perigos.push({x: 520, y: 530, w: 20, h: 20});
 
     portaP1 = {x: 680, y: 160, w: 40, h: 70};
     portaP2 = {x: 740, y: 160, w: 40, h: 70};
 
-    let posItens = [[100,500],[500,500],[700,500], [150,400],[300,350],[600,350], [100,250],[400,250],[550,250], [50,150]];
-    for (let p of posItens) itens.push({x: p[0], y: p[1], w: 15, h: 15, coletado: false});
+    let posItens = [[100,500],[480,500],[700,500], [150,400],[300,320],[600,320], [100,280],[300,280],[540,225], [50,150]];
+    adicionarItens(posItens);
   } 
   
   else if (n === 2) {
     spawnP1 = {x: 50, y: 500};
     spawnP2 = {x: 700, y: 500};
 
-    plataformas.push({x: 0, y: 550, w: 300, h: 50}, {x: 500, y: 550, w: 300, h: 50});
-    plataformas.push({x: 350, y: 480, w: 100, h: 20}); 
+    plataformas.push({x: 0, y: 550, w: 320, h: 50}, {x: 480, y: 550, w: 320, h: 50});
+    plataformas.push({x: 310, y: 480, w: 170, h: 20}); 
     
-    plataformas.push({x: 100, y: 420, w: 200, h: 20}, {x: 500, y: 420, w: 200, h: 20}); 
+    plataformas.push({x: 80, y: 420, w: 180, h: 20}, {x: 540, y: 420, w: 180, h: 20}); 
     
-    plataformas.push({x: 350, y: 310, w: 100, h: 50}); 
+    plataformas.push({x: 350, y: 350, w: 100, h: 50}); 
     
     plataformas.push({x: 150, y: 230, w: 200, h: 20}); 
     plataformas.push({x: 450, y: 230, w: 200, h: 20}); 
 
-    perigos.push({x: 300, y: 580, w: 200, h: 20}); 
-    perigos.push({x: 390, y: 290, w: 20, h: 20});
+    perigos.push({x: 320, y: 580, w: 160, h: 20}); 
+    perigos.push({x: 390, y: 330, w: 20, h: 20});
 
     portaP1 = {x: 150, y: 350, w: 40, h: 70};
     portaP2 = {x: 600, y: 350, w: 40, h: 70};
 
-    let posItens = [[150,500],[650,500],[400,430], [50,300],[750,300], [300,200],[480,200], [200,100],[400,100],[600,100]];
-    for (let p of posItens) itens.push({x: p[0], y: p[1], w: 15, h: 15, coletado: false});
+    let posItens = [[150,500],[650,500],[520,430], [50,300],[750,300], [300,200],[480,200], [200,100],[400,100],[600,100]];
+    adicionarItens(posItens);
   }
 
   else if (n === 3) {
@@ -127,15 +270,15 @@ function carregarNivel(n) {
     plataformas.push({x: 0, y: 400, w: 300, h: 20}, {x: 450, y: 400, w: 350, h: 20});
     plataformas.push({x: 0, y: 550, w: 800, h: 50});
 
-    perigos.push({x: 200, y: 230, w: 100, h: 20});
-    perigos.push({x: 100, y: 530, w: 100, h: 20}, {x: 350, y: 530, w: 100, h: 20});
+    perigos.push({x: 260, y: 230, w: 70, h: 20});
+    perigos.push({x: 340, y: 530, w: 70, h: 20});
     perigos.push({x: 500, y: 230, w: 40, h: 20}); 
 
     portaP1 = {x: 650, y: 480, w: 40, h: 70};
     portaP2 = {x: 720, y: 480, w: 40, h: 70};
 
     let posItens = [[100,80],[700,80], [250,200],[400,200],[600,200], [50,350],[200,350],[550,350], [300,500],[500,500]];
-    for (let p of posItens) itens.push({x: p[0], y: p[1], w: 15, h: 15, coletado: false});
+    adicionarItens(posItens);
   }
 
   else if (n === 4) {
@@ -143,12 +286,12 @@ function carregarNivel(n) {
     spawnP2 = {x: 120, y: 500};
 
     plataformas.push({x: 0, y: 550, w: 800, h: 50});
-    plataformas.push({x: 100, y: 450, w: 600, h: 20});
-    plataformas.push({x: 0, y: 350, w: 700, h: 20});   
+    plataformas.push({x: 100, y: 450, w: 120, h: 20}, {x: 390, y: 450, w: 110, h: 20}, {x: 660, y: 450, w: 120, h: 20});
+    plataformas.push({x: 0, y: 350, w: 350, h: 20}, {x: 520, y: 350, w: 240, h: 20});   
     plataformas.push({x: 100, y: 250, w: 700, h: 20}); 
 
-    perigos.push({x: 250, y: 530, w: 300, h: 20});
-    perigos.push({x: 400, y: 430, w: 20, h: 20}); 
+    perigos.push({x: 270, y: 530, w: 70, h: 20}, {x: 540, y: 530, w: 70, h: 20});
+    perigos.push({x: 430, y: 430, w: 20, h: 20}); 
     perigos.push({x: 550, y: 230, w: 40, h: 20});
     
     portaP1 = {x: 150, y: 180, w: 40, h: 70};
@@ -156,11 +299,11 @@ function carregarNivel(n) {
 
     let posItens = [
       [50, 520], [700, 520], 
-      [150, 420], [350, 420], [650, 420], 
-      [250, 320], [450, 320], 
+      [150, 420], [430, 420], [700, 420], 
+      [250, 320], [600, 320], 
       [200, 220], [400, 220], [650, 220]  
     ];
-    for (let p of posItens) itens.push({x: p[0], y: p[1], w: 15, h: 15, coletado: false});
+    adicionarItens(posItens);
   }
 
   else {
@@ -169,23 +312,35 @@ function carregarNivel(n) {
 
     plataformas.push({x: 0, y: 550, w: 800, h: 50});
     plataformas.push({x: 0, y: 350, w: 150, h: 20}, {x: 250, y: 350, w: 300, h: 20}, {x: 650, y: 350, w: 150, h: 20});
-    plataformas.push({x: 150, y: 200, w: 500, h: 20});
-    plataformas.push({x: 650, y: 150, w: 150, h: 20});
+    plataformas.push({x: 180, y: 200, w: 800, h: 20});
+    
 
-    perigos.push({x: 200, y: 530, w: 150, h: 20}, {x: 450, y: 530, w: 150, h: 20});
-    perigos.push({x: 350, y: 330, w: 40, h: 20}); // NOVO PERIGO
+    perigos.push({x: 200, y: 530, w: 100, h: 20}, {x: 450, y: 530, w: 100, h: 20});
+    perigos.push({x: 350, y: 330, w: 40, h: 20});
 
     inimigos.push(new Inimigo(350, 170, 200, 2)); 
 
     portaP1 = {x: 150, y: 480, w: 40, h: 70};
     portaP2 = {x: 650, y: 280, w: 40, h: 70};
 
-    let posItens = [[50,500],[400,500],[700,500], [100,300],[350,300],[500,300], [200,150],[400,150],[600,150], [700,50]];
-    for (let p of posItens) itens.push({x: p[0], y: p[1], w: 15, h: 15, coletado: false});
+    let posItens = [[50,500],[400,500],[700,500], [100,300],[350,300],[500,300], [200,150],[500,150],[600,150], [700,50]];
+    adicionarItens(posItens);
   }
 
-  p1 = new Jogador(spawnP1.x, spawnP1.y, 87, 65, 68, color(255, 100, 150), imgMabel, 1); 
-  p2 = new Jogador(spawnP2.x, spawnP2.y, UP_ARROW, LEFT_ARROW, RIGHT_ARROW, color(100, 200, 255), imgDipper, 2);
+  p1 = new Jogador(spawnP1.x, spawnP1.y, 87, 65, 68, color(255, 100, 150), spritesMabel, 1); 
+  p2 = new Jogador(spawnP2.x, spawnP2.y, UP_ARROW, LEFT_ARROW, RIGHT_ARROW, color(100, 200, 255), spritesDipper, 2);
+}
+
+function adicionarItens(posItens) {
+  for (let p of posItens) {
+    itens.push({
+      x: p[0],
+      y: p[1],
+      w: TAMANHO_MOEDA,
+      h: TAMANHO_MOEDA,
+      coletado: false
+    });
+  }
 }
 
 // ==========================================
@@ -205,22 +360,22 @@ function executarJogo() {
   }
   for (let plat of plataformas) desenharPlataforma(plat);
 
-  fill(0, 255, 0); 
-  for (let p of perigos) rect(p.x, p.y, p.w, p.h);
+  for (let p of perigos) desenharPocaMagica(p);
 
   fill(255, 100, 150, 150); 
   rect(portaP1.x, portaP1.y, portaP1.w, portaP1.h);
   fill(100, 200, 255, 150); 
   rect(portaP2.x, portaP2.y, portaP2.w, portaP2.h);
 
-  fill(255, 215, 0);
-  let floatOffset = sin(frameCount * 0.1) * 5;
+  let floatOffset = sin(frameCount * 0.1) * OSCILACAO_MOEDA;
   for (let i = 0; i < itens.length; i++) {
     let item = itens[i];
     if (!item.coletado) {
-      ellipse(item.x + item.w/2, item.y + item.h/2 + floatOffset, item.w, item.h);
-      if (p1.colide(item)) { item.coletado = true; pontosNivelP1 += 100; }
-      if (p2.colide(item)) { item.coletado = true; pontosNivelP2 += 100; }
+      desenharMoeda(item, floatOffset);
+
+      let areaMoeda = {x: item.x, y: item.y + floatOffset, w: item.w, h: item.h};
+      if (p1.colide(areaMoeda)) { item.coletado = true; pontosNivelP1 += 100; }
+      if (p2.colide(areaMoeda)) { item.coletado = true; pontosNivelP2 += 100; }
     }
   }
 
@@ -253,17 +408,118 @@ function executarJogo() {
 }
 
 function desenharPlataforma(p) {
-  if (imgPlataforma) {
-    for (let x = 0; x < p.w; x += 32) {
-      for (let y = 0; y < p.h; y += 32) {
-        let drawW = min(32, p.w - x);
-        let drawH = min(32, p.h - y);
-        image(imgPlataforma, p.x + x, p.y + y, drawW, drawH);
-      }
-    }
-  } else {
-    rect(p.x, p.y, p.w, p.h);
+  push();
+  noStroke();
+
+  drawingContext.shadowBlur = 0;
+  fill(0, 0, 0, 85);
+  rect(p.x + 3, p.y + 5, p.w, p.h, 2);
+
+  fill(39, 34, 33);
+  rect(p.x, p.y, p.w, p.h, 3);
+
+  fill(58, 50, 45);
+  rect(p.x, p.y, p.w, max(4, p.h * 0.22), 3, 3, 0, 0);
+
+  fill(24, 22, 24, 155);
+  rect(p.x, p.y + p.h * 0.66, p.w, p.h * 0.34, 0, 0, 3, 3);
+
+  fill(38, 98, 64);
+  rect(p.x, p.y, p.w, 4, 3, 3, 0, 0);
+
+  fill(70, 138, 86, 190);
+  for (let x = p.x + 6; x < p.x + p.w - 4; x += 28) {
+    let musgoH = 2 + ((x + p.y) % 5);
+    rect(x, p.y + 3, 14, musgoH, 0, 0, 3, 3);
   }
+
+  stroke(22, 20, 22, 115);
+  strokeWeight(1);
+  for (let x = p.x + 18; x < p.x + p.w - 8; x += 34) {
+    let yBase = p.y + 8 + ((x + p.y) % max(10, p.h - 8));
+    line(x, yBase, min(x + 12, p.x + p.w - 4), min(yBase + 5, p.y + p.h - 4));
+  }
+
+  stroke(87, 77, 66, 90);
+  for (let y = p.y + 10; y < p.y + p.h - 4; y += 13) {
+    line(p.x + 4, y, p.x + p.w - 4, y);
+  }
+
+  pop();
+}
+
+function desenharPocaMagica(p) {
+  let pulso = (sin(frameCount * 0.12 + p.x * 0.03) + 1) / 2;
+  let centroX = p.x + p.w / 2;
+  let centroY = p.y + p.h / 2;
+
+  push();
+  noStroke();
+
+  drawingContext.shadowBlur = 4 + pulso * 5;
+  fill(12, 196, 82, 225);
+  rect(p.x, p.y + p.h * 0.22, p.w, p.h * 0.7, p.h * 0.35);
+
+  fill(70, 255, 144, 235);
+  beginShape();
+  for (let i = 0; i <= 8; i++) {
+    let x = p.x + (p.w / 8) * i;
+    let y = p.y + p.h * 0.28 + sin(frameCount * 0.16 + i * 0.9 + p.x) * 2;
+    vertex(x, y);
+  }
+  vertex(p.x + p.w, p.y + p.h * 0.9);
+  vertex(p.x, p.y + p.h * 0.9);
+  endShape(CLOSE);
+
+  fill(190, 255, 206, 180);
+  ellipse(centroX - p.w * 0.18, p.y + p.h * 0.36, max(6, p.w * 0.2), max(3, p.h * 0.18));
+  ellipse(centroX + p.w * 0.23, p.y + p.h * 0.42, max(5, p.w * 0.15), max(3, p.h * 0.15));
+
+  drawingContext.shadowBlur = 0;
+  stroke(132, 255, 178, 210);
+  strokeWeight(2);
+  noFill();
+  arc(centroX, centroY + p.h * 0.1, p.w * 0.92, p.h * 0.72, 0, PI);
+
+  noStroke();
+  fill(164, 255, 193, 150 + pulso * 70);
+  let bolhas = max(1, floor(p.w / 36));
+  for (let i = 0; i < bolhas; i++) {
+    let bx = p.x + p.w * ((i + 1) / (bolhas + 1));
+    let by = p.y + p.h * 0.12 + sin(frameCount * 0.09 + i) * 3;
+    let tamanho = 3 + ((i + floor(frameCount / 20)) % 3);
+    ellipse(bx, by, tamanho, tamanho);
+  }
+
+  pop();
+}
+
+function desenharMoeda(item, floatOffset) {
+  let centroX = item.x + item.w / 2;
+  let centroY = item.y + item.h / 2 + floatOffset;
+  let pulso = (sin(frameCount * 0.08 + item.x * 0.02) + 1) / 2;
+  let tamanho = item.w * (0.92 + pulso * 0.08);
+
+  push();
+  translate(centroX, centroY);
+
+  noStroke();
+  fill(0, 0, 0, 45);
+  ellipse(0, item.h * 0.62, item.w * 0.76, item.h * 0.18);
+
+  fill(255, 202, 58);
+  ellipse(0, 0, tamanho, tamanho);
+
+  stroke(169, 111, 18);
+  strokeWeight(2);
+  noFill();
+  ellipse(0, 0, tamanho * 0.78, tamanho * 0.78);
+
+  noStroke();
+  fill(255, 239, 137, 210);
+  ellipse(-tamanho * 0.18, -tamanho * 0.22, tamanho * 0.22, tamanho * 0.14);
+
+  pop();
 }
 
 // ==========================================
@@ -324,27 +580,46 @@ class Inimigo {
 }
 
 class Jogador {
-  constructor(x, y, up, left, right, cor, sprite, id) {
+  constructor(x, y, up, left, right, cor, sprites, id) {
     this.x = x; this.y = y;
-    this.w = 30; this.h = 40;
+    this.sprites = Array.isArray(sprites) ? { fallback: sprites[0], frames: sprites } : sprites;
+    this.h = ALTURA_JOGADOR;
+    this.w = this.calcularLarguraHitbox();
     this.vy = 0;
     this.gravidade = 0.7;
     this.pulo = -13;
     this.noChao = false;
     this.cor = cor;
-    this.sprite = sprite;
     this.controles = { up, left, right };
     this.id = id;
+    this.andando = false;
+    this.direcao = 1;
+    this.velocidadeAnimacao = 8;
     this.chegouNoDestino = false; 
   }
 
   atualizar(plats, pers, pmovs) {
-    if (this.chegouNoDestino) return; 
+    this.atualizarLarguraHitbox();
+
+    if (this.chegouNoDestino) {
+      this.andando = false;
+      return;
+    } 
 
     // === MOVIMENTO HORIZONTAL ===
     let oldX = this.x;
-    if (keyIsDown(this.controles.left)) this.x -= 6;
-    if (keyIsDown(this.controles.right)) this.x += 6;
+    let esquerdaPressionada = keyIsDown(this.controles.left);
+    let direitaPressionada = keyIsDown(this.controles.right);
+    this.andando = esquerdaPressionada || direitaPressionada;
+
+    if (esquerdaPressionada) {
+      this.x -= 6;
+      this.direcao = -1;
+    }
+    if (direitaPressionada) {
+      this.x += 6;
+      this.direcao = 1;
+    }
 
     for (let plat of plats) {
       if (this.colide(plat)) {
@@ -402,12 +677,70 @@ class Jogador {
   }
 
   desenhar() {
-    if (this.sprite) {
-      image(this.sprite, this.x, this.y, this.w, this.h);
+    this.atualizarLarguraHitbox();
+    let frameAtual = this.pegarFrameAtual();
+
+    if (frameAtual && frameAtual.img) {
+      let corte = frameAtual.corte;
+      let larguraFrame = this.calcularLarguraFrame(frameAtual);
+      let xFrame = this.x + (this.w - larguraFrame) / 2;
+
+      push();
+      if (this.direcao < 0) {
+        translate(xFrame + larguraFrame, this.y);
+        scale(-1, 1);
+        image(frameAtual.img, 0, 0, larguraFrame, this.h, corte.x, corte.y, corte.w, corte.h);
+      } else {
+        image(frameAtual.img, xFrame, this.y, larguraFrame, this.h, corte.x, corte.y, corte.w, corte.h);
+      }
+      pop();
     } else {
       fill(this.cor);
       rect(this.x, this.y, this.w, this.h);
     }
+  }
+
+  pegarFrameAtual() {
+    if (!this.sprites) return null;
+
+    let frames = this.sprites.frames || [];
+    let fallback = this.sprites.fallback || null;
+    if (!this.andando) return frames[0] || fallback;
+
+    let indice = floor(frameCount / this.velocidadeAnimacao) % frames.length;
+    return frames[indice] || fallback;
+  }
+
+  pegarTodosFrames() {
+    if (!this.sprites) return [];
+
+    let frames = this.sprites.frames || [];
+    return [this.sprites.fallback, ...frames].filter((frame) => frame && frame.corte);
+  }
+
+  calcularLarguraFrame(frame) {
+    if (!frame || !frame.corte || frame.corte.h <= 0) return 30;
+    return ceil(this.h * (frame.corte.w / frame.corte.h));
+  }
+
+  calcularLarguraHitbox() {
+    let frames = this.pegarTodosFrames();
+    let largura = 30;
+
+    for (let frame of frames) {
+      largura = max(largura, this.calcularLarguraFrame(frame));
+    }
+
+    return largura;
+  }
+
+  atualizarLarguraHitbox() {
+    let novaLargura = this.calcularLarguraHitbox();
+    if (novaLargura === this.w) return;
+
+    let centroX = this.x + this.w / 2;
+    this.w = novaLargura;
+    this.x = constrain(centroX - this.w / 2, 0, width - this.w);
   }
 
   colide(obj) {
